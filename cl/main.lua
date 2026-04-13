@@ -1,6 +1,4 @@
-local core = exports['rsg-core']:GetCoreObject()
-local Config = Config
-local pedModel = `A_F_M_SDSERVERSFORMAL_01`
+local Config = lib.load('config')
 
 local function Notify(title, txt, type)
     lib.notify({
@@ -13,28 +11,23 @@ local function Notify(title, txt, type)
     })
 end
 
-local function ChangeName()
+local function ChangeName(dat)
+    local jobAccess = lib.callback.await('kj_namechanger:sv:jobCheck', false, dat.job)
     local allPlayers = lib.callback.await('kj_namechanger:sv:getPlayers', false)
-
     local playerSelect = lib.inputDialog('Choose Citizen 📋', {{type = 'number', label = 'Input Player ID', icon = 'filter'}})
 
+    if not jobAccess then Notify('Name Changer', 'No job access!', 'error') return end
     if not playerSelect or not playerSelect[1] then Notify('Name Changer', 'No Players Selected!', 'error') return end
-
     if not allPlayers[playerSelect[1]] then Notify('Name Changer', 'Player not found!', 'error') return end
     if playerSelect[1] == cache.serverId then Notify('Name Changer', 'Cannot choose yourself!', 'error') return end
 
     local name = lib.inputDialog('Change Name to:', {'First Name', 'Last Name'})
     if not name or name[1] == '' or name[2] == '' then Notify('Name Changer', 'Please enter both first and last names!', 'error') return end
 
-    -- print('Player ID: '..playerSelect[1]..' | New Name: '..name[1]..' '..name[2])
-
     local dump = {
         playerSelect = playerSelect[1],
         name = name
     }
-
-    core.Functions.GetPlayerData().charinfo.firstname = name[1]
-    core.Functions.GetPlayerData().charinfo.lastname = name[2]
 
     TriggerServerEvent('kj_namechanger:sv:changeName', dump)
 end
@@ -45,8 +38,8 @@ for k, v in pairs(Config.locations) do
         coords = v.coords,
         distance = 5,
         onEnter = function(self)
-            lib.requestModel(pedModel)
-            self.ped = CreatePed(pedModel, v.coords.x, v.coords.y, v.coords.z - 1.0, v.coords.w, false, false, 0, 0)
+            lib.requestModel(v.pedModel)
+            self.ped = CreatePed(v.pedModel, v.coords.x, v.coords.y, v.coords.z - 1.0, v.coords.w, false, false, 0, 0)
             SetEntityAsMissionEntity(self.ped, true, true)
             SetEntityAlpha(self.ped, 150, false)
             SetRandomOutfitVariation(self.ped, true)
@@ -59,20 +52,18 @@ for k, v in pairs(Config.locations) do
                 Wait(50)
                 SetEntityAlpha(self.ped, i, false)
             end
-            exports.ox_target:addModel(pedModel, {
+            exports.ox_target:addModel(v.pedModel, {
                 label = 'Change Name',
                 distance = 3,
                 icon = 'fa-solid fa-id-card',
                 onSelect = function()
-                    local plyJob = core.Functions.GetPlayerData().job.name
-                    if plyJob ~= v.job then Notify('Name Changer', 'No job access!', 'error') return end
-                    ChangeName()
+                    ChangeName(v)
                 end
             })
         end,
 
         onExit = function(self)
-            exports.ox_target:removeModel(pedModel)
+            exports.ox_target:removeModel(v.pedModel)
             for i = 255, 0, -51 do
                 Wait(50)
                 SetEntityAlpha(self.ped, i, false)
@@ -103,6 +94,5 @@ for k, v in pairs(Config.locations) do
 end
 
 RegisterNetEvent('kj_namechanger:cl:notify', function(title, txt, type)
-    print('Received notification from server: '..title..' | '..txt..' | '..type)
     Notify(title, txt, type)
 end)
