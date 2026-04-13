@@ -9,6 +9,7 @@ Desc:
 - Drawtext / Drawmarker by distance
 - Select player by player ID
 - Verify if selected player ID exist from serverside
+- Discord Webhook Logs
 
 Dependencies:
 - rsg-core
