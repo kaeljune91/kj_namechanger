@@ -1,6 +1,8 @@
 local core = exports['rsg-core']:GetCoreObject()
+local Config = lib.load('config')
 
-local webhookURL = 'https://discord.com/api/webhooks/1493241067036872794/dc0-URStLrupQK2EvmS2p8QwPJd8xb4AqpCyol7gQUtpDCwrnJR58jJx9UWEUvBsaa9W' -- to do add webhook url here
+-- Change webhookURL here
+local webhookURL = 'https://discord.com/api/webhooks/1493241067036872794/dc0-URStLrupQK2EvmS2p8QwPJd8xb4AqpCyol7gQUtpDCwrnJR58jJx9UWEUvBsaa9W'
 
 local function Notify(tgt, title, txt, type)
     TriggerClientEvent('kj_namechanger:cl:notify', tgt, title, txt, type)
@@ -24,6 +26,24 @@ local function pushLog(source, playerId, oldName, newName)
     PerformHttpRequest(webhookURL, function(err, text, headers) end, 'POST', json.encode({username = "Name Changer", embeds = dump}), { ['Content-Type'] = 'application/json' })
 end
 
+local function CheckPerms(ply)
+    local hasJob = false
+    local isAdmin = IsPlayerAceAllowed(ply, 'admin') or IsPlayerAceAllowed(ply, 'god')
+    local jobCheck = core.Functions.GetPlayer(ply).PlayerData.job.name
+
+    for k, v in pairs(Config.locations) do
+        if jobCheck == v.job then
+            hasJob = true
+            break
+        end
+    end
+
+    if isAdmin or hasJob then
+        return true
+    end
+    return false
+end
+
 RegisterNetEvent('kj_namechanger:sv:changeName', function(dat)
     local src = source
     local playerId = dat.playerSelect
@@ -31,27 +51,25 @@ RegisterNetEvent('kj_namechanger:sv:changeName', function(dat)
     local ply = core.Functions.GetPlayer(playerId)
     local playerDat = ply.PlayerData
     local oldName = playerDat.charinfo.firstname..' '..playerDat.charinfo.lastname
+    local hasPerm = CheckPerms(src)
 
-    if not newName or newName[1] == '' or newName[2] == '' then Notify(src, 'Name Changer', 'Please enter a valid name!', 'error') return end
+    if hasPerm then
+        if not newName or newName[1] == '' or newName[2] == '' then Notify(src, 'Name Changer', 'Please enter a valid name!', 'error') return end
 
-    playerDat.charinfo.firstname = newName[1]
-    playerDat.charinfo.lastname = newName[2]
+        playerDat.charinfo.firstname = newName[1]
+        playerDat.charinfo.lastname = newName[2]
 
-    ply.Functions.SetPlayerData('charinfo', playerDat.charinfo)
+        ply.Functions.SetPlayerData('charinfo', playerDat.charinfo)
 
-    pushLog(src, playerId, oldName, newName)
+        pushLog(src, playerId, oldName, newName)
 
-    Notify(playerId, 'Name Changer', 'Successfully changed Player ['..playerId..'] name to '..newName[1]..' '..newName[2], 'success')
-    Notify(src, 'Name Changer', 'Successfully changed Player ['..playerId..'] name to'..newName[1]..' '..newName[2], 'success')
-end)
-
-lib.callback.register('kj_namechanger:sv:jobCheck', function(source, jobName)
-    local ply = core.Functions.GetPlayer(source)
-    local plyJob = ply.PlayerData.job.name
-
-    if plyJob ~= jobName then return false end
-
-    return true
+        Notify(playerId, 'Name Changer', 'Successfully changed Player ['..playerId..'] name to '..newName[1]..' '..newName[2], 'success')
+        Notify(src, 'Name Changer', 'Successfully changed Player ['..playerId..'] name to'..newName[1]..' '..newName[2], 'success')
+    else
+        Notify(src, 'Name Changer', 'You do not have permission to use this!', 'error')
+        Wait(3000)
+        DropPlayer(src, 'Kicked | Reason: Exploiting Name Changer')
+    end
 end)
 
 lib.callback.register('kj_namechanger:sv:getPlayers', function(source)

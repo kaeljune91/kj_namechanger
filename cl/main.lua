@@ -1,4 +1,5 @@
 local Config = lib.load('config')
+local core = exports['rsg-core']:GetCoreObject()
 
 local function Notify(title, txt, type)
     lib.notify({
@@ -11,12 +12,10 @@ local function Notify(title, txt, type)
     })
 end
 
-local function ChangeName(dat)
-    local jobAccess = lib.callback.await('kj_namechanger:sv:jobCheck', false, dat.job)
+local function ChangeName()
     local allPlayers = lib.callback.await('kj_namechanger:sv:getPlayers', false)
     local playerSelect = lib.inputDialog('Choose Citizen 📋', {{type = 'number', label = 'Input Player ID', icon = 'filter'}})
 
-    if not jobAccess then Notify('Name Changer', 'No job access!', 'error') return end
     if not playerSelect or not playerSelect[1] then Notify('Name Changer', 'No Players Selected!', 'error') return end
     if not allPlayers[playerSelect[1]] then Notify('Name Changer', 'Player not found!', 'error') return end
     if playerSelect[1] == cache.serverId then Notify('Name Changer', 'Cannot choose yourself!', 'error') return end
@@ -57,7 +56,9 @@ for k, v in pairs(Config.locations) do
                 distance = 3,
                 icon = 'fa-solid fa-id-card',
                 onSelect = function()
-                    ChangeName(v)
+                    local plyJob = core.Functions.GetPlayerData().job.name
+                    if plyJob ~= v.job then Notify('Name Changer', 'No job access!', 'error') return end
+                    ChangeName()
                 end
             })
         end,
